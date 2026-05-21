@@ -251,28 +251,19 @@ class TestToHtml:
         """Test basic HTML output without project."""
         opts = ViewOptions(view_id="my-view")
         html = LikeC4Parser.to_html(opts)
-        assert (
-            html
-            == '<likec4-view view-id="my-view" browser="true" dynamic-variant="diagram"></likec4-view>'
-        )
+        assert html == '<likec4-view view-id="my-view"></likec4-view>'
 
     def test_html_with_project(self):
         """Test HTML output with valid project."""
         opts = ViewOptions(view_id="my-view", project="myproject")
         html = LikeC4Parser.to_html(opts)
-        assert (
-            html
-            == '<myproject-view view-id="my-view" browser="true" dynamic-variant="diagram"></myproject-view>'
-        )
+        assert html == '<myproject-view view-id="my-view"></myproject-view>'
 
     def test_html_with_uppercase_project(self):
         """Test HTML output with uppercase project (should be lowercased)."""
         opts = ViewOptions(view_id="my-view", project="MyProject")
         html = LikeC4Parser.to_html(opts)
-        assert (
-            html
-            == '<myproject-view view-id="my-view" browser="true" dynamic-variant="diagram"></myproject-view>'
-        )
+        assert html == '<myproject-view view-id="my-view"></myproject-view>'
 
     def test_html_with_custom_options(self):
         """Test HTML output with custom options."""
@@ -288,14 +279,25 @@ class TestToHtml:
             == '<proj-view view-id="test" browser="false" dynamic-variant="sequence"></proj-view>'
         )
 
+    def test_html_omits_only_default_browser(self):
+        """Only dynamic-variant is emitted when browser is at default."""
+        opts = ViewOptions(view_id="v", dynamic_variant="sequence")
+        html = LikeC4Parser.to_html(opts)
+        assert (
+            html == '<likec4-view view-id="v" dynamic-variant="sequence"></likec4-view>'
+        )
+
+    def test_html_omits_only_default_dynamic_variant(self):
+        """Only browser is emitted when dynamic-variant is at default."""
+        opts = ViewOptions(view_id="v", browser="false")
+        html = LikeC4Parser.to_html(opts)
+        assert html == '<likec4-view view-id="v" browser="false"></likec4-view>'
+
     def test_html_with_invalid_project_falls_back(self):
         """Test HTML output with invalid project name falls back to likec4-view."""
         opts = ViewOptions(view_id="my-view", project="123invalid")
         html = LikeC4Parser.to_html(opts)
-        assert (
-            html
-            == '<likec4-view view-id="my-view" browser="true" dynamic-variant="diagram"></likec4-view>'
-        )
+        assert html == '<likec4-view view-id="my-view"></likec4-view>'
 
     def test_html_escapes_invalid_view_id_with_quotes(self):
         """Test that invalid view ID with quotes is escaped to prevent XSS."""
