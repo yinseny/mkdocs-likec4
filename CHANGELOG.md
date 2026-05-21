@@ -1,11 +1,13 @@
-## Unreleased
+## v1.1.2 (2026-05-21)
 
 ### Bug Fixes
 
+- omit browser/dynamic-variant attrs when at defaults
 - run ruff fmt
 
 ### Build
 
+- fix changelog formatting in commitizen config
 - **deps-dev**: bump commitizen from 4.15.1 to 4.16.2
 - **deps-dev**: bump ruff from 0.15.12 to 0.15.13
 - **deps**: bump pyjson5 from 2.0.0 to 2.0.1
