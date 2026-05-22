@@ -53,7 +53,7 @@ class TestGenerate:
         assert call_args[1] == "likec4"
         assert call_args[2] == "codegen"
         assert call_args[3] == "webcomponent"
-        assert "/docs" in call_args[4]
+        assert "/docs" in call_args
         assert "--webcomponent-prefix" not in call_args
         # Verify check=True is passed for proper error handling
         assert call_kwargs.get("check") is True
@@ -157,8 +157,8 @@ class TestGenerate:
         assert "likec4_views_proj.js" in output_path
 
     @patch("mkdocs_likec4.generator.subprocess.run")
-    def test_generate_use_dot_true_by_default(self, mock_run, tmp_path):
-        """Test that --no-use-dot flag is not added by default (use_dot=True)."""
+    def test_generate_use_dot_false_by_default(self, mock_run, tmp_path):
+        """Test that --no-use-dot flag is added by default (use_dot=False)."""
         site_dir = tmp_path / "site"
         site_dir.mkdir()
 
@@ -167,24 +167,24 @@ class TestGenerate:
             project_dir=None,
             build_dir="/docs",
             site_dir=site_dir,
-        )
-
-        call_args = mock_run.call_args[0][0]
-        assert "--no-use-dot" not in call_args
-
-    @patch("mkdocs_likec4.generator.subprocess.run")
-    def test_generate_use_dot_false(self, mock_run, tmp_path):
-        """Test that --no-use-dot flag is added when use_dot=False."""
-        site_dir = tmp_path / "site"
-        site_dir.mkdir()
-
-        WebComponentGenerator.generate(
-            project_name=None,
-            project_dir=None,
-            build_dir="/docs",
-            site_dir=site_dir,
-            use_dot=False,
         )
 
         call_args = mock_run.call_args[0][0]
         assert "--no-use-dot" in call_args
+
+    @patch("mkdocs_likec4.generator.subprocess.run")
+    def test_generate_use_dot_true(self, mock_run, tmp_path):
+        """Test that --no-use-dot flag is omitted when use_dot=True."""
+        site_dir = tmp_path / "site"
+        site_dir.mkdir()
+
+        WebComponentGenerator.generate(
+            project_name=None,
+            project_dir=None,
+            build_dir="/docs",
+            site_dir=site_dir,
+            use_dot=True,
+        )
+
+        call_args = mock_run.call_args[0][0]
+        assert "--no-use-dot" not in call_args

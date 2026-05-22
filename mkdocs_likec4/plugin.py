@@ -21,7 +21,7 @@ class LikeC4Plugin(BasePlugin):
     """MkDocs plugin for embedding LikeC4 architecture diagrams."""
 
     config_scheme = (
-        ("use_dot", config_options.Type(bool, default=True)),
+        ("use_dot", config_options.Type(bool, default=False)),
         (
             "color_scheme",
             config_options.Choice(["auto", "light", "dark"], default="auto"),

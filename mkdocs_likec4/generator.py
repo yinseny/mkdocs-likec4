@@ -28,7 +28,7 @@ class WebComponentGenerator:
         build_dir: str,
         site_dir: Path,
         *,
-        use_dot: bool = True,
+        use_dot: bool = False,
     ) -> None:
         """Generate web component JS file for a LikeC4 project."""
         if project_name is not None and not LikeC4Parser.is_valid_identifier(

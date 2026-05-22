@@ -5,7 +5,7 @@
 ## Requirements
 
 - [`likec4`](https://likec4.dev/tooling/cli/)
-- `graphviz` dependency (see also [use_dot](#use_dot) below)
+- `graphviz` (optional, only when [use_dot](#use_dot) is enabled)
 
 Check out the sample [Dockerfile](https://github.com/doubleSlashde/mkdocs-likec4/blob/main/Dockerfile) for how you can provide the likec4 and graphviz dependencies.
 
@@ -32,15 +32,15 @@ That's it! The plugin automatically:
 
 ### use_dot
 
-By default mkdocs-likec4 uses local graphviz binaries instead of bundled WASM (as it has [memory issues](https://github.com/likec4/likec4/issues?q=Memory%20type:Bug)).
+By default mkdocs-likec4 uses the bundled WASM layout engine, matching the behaviour of the `likec4` preview server.
 
-You can override it with the `use_dot: false` setting:
+You can opt into local graphviz binaries (which avoids known WASM [memory issues](https://github.com/likec4/likec4/issues?q=Memory%20type:Bug)) with `use_dot: true`. Note that this might result in a different layout than what the LikeC4 preview renders.
 
 ```yaml
 plugins:
   - search
   - likec4:
-      use_dot: false
+      use_dot: true
 ```
 
 ### color_scheme
