@@ -3,3 +3,6 @@
 !pyproject.toml
 !README.md
 !Dockerfile
+!requirements-docs.txt
+!package.json
+!package-lock.json

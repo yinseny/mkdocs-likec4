@@ -5,8 +5,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     npm python3 python3-pip graphviz \
     && rm -rf /var/lib/apt/lists/*
 
-# Install LikeC4 CLI (>=1.57.0 for color-scheme attribute support)
-RUN npm install -g likec4@^1.57.0
+COPY package.json package-lock.json /opt/likec4/
+RUN cd /opt/likec4 && npm ci
+ENV PATH="/opt/likec4/node_modules/.bin:${PATH}"
 
 COPY requirements-docs.txt /tmp/requirements-docs.txt
 RUN pip3 install --break-system-packages -r /tmp/requirements-docs.txt && rm /tmp/requirements-docs.txt
