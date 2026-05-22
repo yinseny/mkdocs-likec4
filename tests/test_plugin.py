@@ -12,7 +12,7 @@ from mkdocs_likec4.plugin import LikeC4Plugin
 def plugin():
     """Create a fresh plugin instance with default config."""
     p = LikeC4Plugin()
-    p.config = {"use_dot": True}
+    p.config = {"use_dot": True, "color_scheme": "auto"}
     return p
 
 
@@ -32,6 +32,7 @@ class TestPluginInit:
         assert plugin.docs_dir is None
         assert plugin.page_projects == {}
         assert plugin.project_map == {}
+        assert plugin.pages_with_auto_views == set()
 
 
 class TestDiscoverProjects:
@@ -414,3 +415,124 @@ class TestOnPostBuild:
 
         mock_generate.assert_called_once()
         assert mock_generate.call_args.kwargs["use_dot"] is False
+
+
+class TestColorScheme:
+    """Tests for color_scheme plugin config and auto view tracking."""
+
+    def test_auto_default_marks_page(self, plugin, docs_dir):
+        plugin.docs_dir = docs_dir
+        plugin.project_map = {None: "."}
+
+        page = MagicMock()
+        page.file.src_uri = "index.md"
+        page.file.src_path = "index.md"
+
+        result = plugin.on_page_markdown("```likec4-view\nview\n```", page)
+
+        assert "index.md" in plugin.pages_with_auto_views
+        assert "data-likec4-auto-scheme" in result
+
+    def test_config_light_does_not_mark_page(self, plugin, docs_dir):
+        plugin.docs_dir = docs_dir
+        plugin.project_map = {None: "."}
+        plugin.config["color_scheme"] = "light"
+
+        page = MagicMock()
+        page.file.src_uri = "index.md"
+        page.file.src_path = "index.md"
+
+        result = plugin.on_page_markdown("```likec4-view\nview\n```", page)
+
+        assert "index.md" not in plugin.pages_with_auto_views
+        assert 'color-scheme="light"' in result
+        assert "data-likec4-auto-scheme" not in result
+
+    def test_fence_auto_overrides_static_config(self, plugin, docs_dir):
+        plugin.docs_dir = docs_dir
+        plugin.project_map = {None: "."}
+        plugin.config["color_scheme"] = "dark"
+
+        page = MagicMock()
+        page.file.src_uri = "index.md"
+        page.file.src_path = "index.md"
+
+        result = plugin.on_page_markdown(
+            "```likec4-view color-scheme=auto\nview\n```", page
+        )
+
+        assert "index.md" in plugin.pages_with_auto_views
+        assert "data-likec4-auto-scheme" in result
+
+    def test_fence_dark_overrides_auto_config(self, plugin, docs_dir):
+        plugin.docs_dir = docs_dir
+        plugin.project_map = {None: "."}
+
+        page = MagicMock()
+        page.file.src_uri = "index.md"
+        page.file.src_path = "index.md"
+
+        result = plugin.on_page_markdown(
+            "```likec4-view color-scheme=dark\nview\n```", page
+        )
+
+        assert "index.md" not in plugin.pages_with_auto_views
+        assert 'color-scheme="dark"' in result
+
+    def test_on_page_content_injects_theme_sync_for_auto_pages(self, plugin):
+        plugin.page_projects = {"index.md": {None}}
+        plugin.pages_with_auto_views = {"index.md"}
+
+        page = MagicMock()
+        page.file.src_uri = "index.md"
+        page.url = "index.html"
+
+        result = plugin.on_page_content("<h1>x</h1>", page)
+
+        assert "theme_sync.js" in result
+        assert "likec4_views.js" in result
+
+    def test_on_page_content_no_theme_sync_for_static_pages(self, plugin):
+        plugin.page_projects = {"index.md": {None}}
+        plugin.pages_with_auto_views = set()
+
+        page = MagicMock()
+        page.file.src_uri = "index.md"
+        page.url = "index.html"
+
+        result = plugin.on_page_content("<h1>x</h1>", page)
+
+        assert "theme_sync.js" not in result
+        assert "likec4_views.js" in result
+
+    @patch("mkdocs_likec4.plugin.WebComponentGenerator.generate")
+    def test_post_build_copies_theme_sync_asset(self, _mock_generate, plugin, tmp_path):
+        plugin.docs_dir = tmp_path / "docs"
+        plugin.docs_dir.mkdir()
+        plugin.project_map = {None: "."}
+        plugin.page_projects = {"index.md": {None}}
+        plugin.pages_with_auto_views = {"index.md"}
+
+        site_dir = tmp_path / "site"
+        site_dir.mkdir()
+        plugin.on_post_build({"site_dir": str(site_dir)})
+
+        copied = site_dir / "assets" / "mkdocs_likec4" / "theme_sync.js"
+        assert copied.exists()
+        assert "data-likec4-auto-scheme" in copied.read_text()
+
+    @patch("mkdocs_likec4.plugin.WebComponentGenerator.generate")
+    def test_post_build_skips_theme_sync_when_no_auto_views(
+        self, _mock_generate, plugin, tmp_path
+    ):
+        plugin.docs_dir = tmp_path / "docs"
+        plugin.docs_dir.mkdir()
+        plugin.project_map = {None: "."}
+        plugin.page_projects = {"index.md": {None}}
+
+        site_dir = tmp_path / "site"
+        site_dir.mkdir()
+        plugin.on_post_build({"site_dir": str(site_dir)})
+
+        copied = site_dir / "assets" / "mkdocs_likec4" / "theme_sync.js"
+        assert not copied.exists()

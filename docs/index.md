@@ -43,6 +43,22 @@ plugins:
       use_dot: false
 ```
 
+### color_scheme
+
+Sets the default color scheme for all diagrams. Possible values:
+
+- `auto` (default): diagrams follow the current MkDocs theme and react instantly when the palette toggle is switched.
+- `light` / `dark`: pins all diagrams to the chosen scheme.
+
+```yaml
+plugins:
+  - search
+  - likec4:
+      color_scheme: light
+```
+
+Individual diagrams can override the global setting (see [color-scheme](#view-options) below).
+
 ## Usage
 
 Use the `likec4-view` code block and specify the view-id in the body to embed a LikeC4 diagram:
@@ -68,6 +84,11 @@ You may provide the following options on the opening fence line:
 - `project=<project-name>`
 
     The LikeC4 project to use for this view (for multi-project setups)
+
+- `color-scheme=auto|light|dark`
+
+    Overrides the global [color_scheme](#color_scheme) for this diagram. `auto` keeps the diagram
+    in sync with the MkDocs theme; `light` / `dark` pin it to that scheme.
 
 ## Examples
 

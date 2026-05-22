@@ -1,4 +1,6 @@
 import logging
+import shutil
+from importlib import resources
 from pathlib import Path
 from typing import Optional
 
@@ -12,16 +14,25 @@ from .parser import LikeC4Parser
 
 log = logging.getLogger(f"mkdocs.plugins.{__name__}")
 
+THEME_SYNC_SCRIPT = f"{WebComponentGenerator.ASSETS_DIR}/theme_sync.js"
+
 
 class LikeC4Plugin(BasePlugin):
     """MkDocs plugin for embedding LikeC4 architecture diagrams."""
 
-    config_scheme = (("use_dot", config_options.Type(bool, default=True)),)
+    config_scheme = (
+        ("use_dot", config_options.Type(bool, default=True)),
+        (
+            "color_scheme",
+            config_options.Choice(["auto", "light", "dark"], default="auto"),
+        ),
+    )
 
     def __init__(self):
         self.docs_dir = None
         self.page_projects = {}
         self.project_map = {}
+        self.pages_with_auto_views = set()
 
     def _discover_projects(self, docs_dir: Path):
         """Discover LikeC4 projects by scanning for likec4.config.json files."""
@@ -73,24 +84,35 @@ class LikeC4Plugin(BasePlugin):
         page_file = page.file.src_uri
         projects_on_page = set()
         page_path = self.docs_dir / page.file.src_path
+        default_scheme = self.config["color_scheme"]
+        has_auto_view = False
 
         def replacer(match):
+            nonlocal has_auto_view
             indent, options_text, view_id = (
                 match.group(1),
                 match.group(2),
                 match.group(3),
             )
-            opts = LikeC4Parser.parse_options(options_text.strip(), view_id.strip())
+            opts = LikeC4Parser.parse_options(
+                options_text.strip(),
+                view_id.strip(),
+                default_color_scheme=default_scheme,
+            )
 
             if opts.project is None:
                 opts.project = self._find_nearest_project(page_path, self.docs_dir)
 
             projects_on_page.add(opts.project)
+            if opts.color_scheme == "auto":
+                has_auto_view = True
             return indent + LikeC4Parser.to_html(opts)
 
         markdown = LikeC4Parser.PATTERN.sub(replacer, markdown)
         if projects_on_page:
             self.page_projects[page_file] = projects_on_page
+        if has_auto_view:
+            self.pages_with_auto_views.add(page_file)
         return markdown
 
     def on_page_content(self, html, page, **kwargs):
@@ -103,6 +125,10 @@ class LikeC4Plugin(BasePlugin):
             f'<script src="{get_relative_url(WebComponentGenerator.get_script_path(p), page.url)}"></script>'
             for p in self.page_projects[page_file]
         ]
+        if page_file in self.pages_with_auto_views:
+            scripts.append(
+                f'<script src="{get_relative_url(THEME_SYNC_SCRIPT, page.url)}"></script>'
+            )
         return "\n".join(scripts) + "\n" + html
 
     def on_post_build(self, config):
@@ -124,3 +150,14 @@ class LikeC4Plugin(BasePlugin):
                     "mkdocs-likec4: Skipping generation for undiscovered project: %s",
                     project,
                 )
+
+        if self.pages_with_auto_views:
+            self._copy_theme_sync_asset(site_dir)
+
+    @staticmethod
+    def _copy_theme_sync_asset(site_dir: Path) -> None:
+        dest = site_dir / THEME_SYNC_SCRIPT
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        src = resources.files("mkdocs_likec4").joinpath("assets/theme_sync.js")
+        with resources.as_file(src) as src_path:
+            shutil.copy2(src_path, dest)

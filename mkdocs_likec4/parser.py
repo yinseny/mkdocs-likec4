@@ -17,6 +17,7 @@ class ViewOptions:
     browser: str = "true"
     dynamic_variant: str = "diagram"
     project: Optional[str] = None
+    color_scheme: str = "auto"
 
 
 class LikeC4Parser:
@@ -28,6 +29,7 @@ class LikeC4Parser:
     OPT_BROWSER = re.compile(r"\bbrowser=(true|false)\b")
     OPT_VARIANT = re.compile(r"\bdynamic-variant=(diagram|sequence)\b")
     OPT_PROJECT = re.compile(r"\bproject=([^\s]+)\b")
+    OPT_COLOR_SCHEME = re.compile(r"\bcolor-scheme=(auto|light|dark)\b")
 
     @classmethod
     def is_valid_identifier(cls, value: str) -> bool:
@@ -35,13 +37,20 @@ class LikeC4Parser:
         return bool(IDENTIFIER_PATTERN.match(value))
 
     @classmethod
-    def parse_options(cls, options_text: str, view_id: str) -> ViewOptions:
+    def parse_options(
+        cls,
+        options_text: str,
+        view_id: str,
+        default_color_scheme: str = "auto",
+    ) -> ViewOptions:
         """
         Parse options from the opening fence line of a likec4-view block.
 
         Options can appear in any order and are all optional with sensible defaults.
+        The color-scheme value defaults to ``default_color_scheme`` (typically the
+        plugin-wide setting) unless overridden in the fence line.
         """
-        opts = ViewOptions(view_id=view_id)
+        opts = ViewOptions(view_id=view_id, color_scheme=default_color_scheme)
 
         if m := cls.OPT_BROWSER.search(options_text):
             opts.browser = m.group(1)
@@ -51,6 +60,9 @@ class LikeC4Parser:
 
         if m := cls.OPT_PROJECT.search(options_text):
             opts.project = m.group(1)
+
+        if m := cls.OPT_COLOR_SCHEME.search(options_text):
+            opts.color_scheme = m.group(1)
 
         return opts
 
@@ -75,4 +87,8 @@ class LikeC4Parser:
             attrs += f' browser="{opts.browser}"'
         if opts.dynamic_variant != "diagram":
             attrs += f' dynamic-variant="{opts.dynamic_variant}"'
+        if opts.color_scheme in ("light", "dark"):
+            attrs += f' color-scheme="{opts.color_scheme}"'
+        elif opts.color_scheme == "auto":
+            attrs += " data-likec4-auto-scheme"
         return f"<{tag} {attrs}></{tag}>"

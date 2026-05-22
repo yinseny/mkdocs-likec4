@@ -17,6 +17,9 @@ dependencies = [
 [tool.setuptools.packages.find]
 include = ["mkdocs_likec4*"]
 
+[tool.setuptools.package-data]
+mkdocs_likec4 = ["assets/*.js"]
+
 [project.entry-points."mkdocs.plugins"]
 "likec4" = "mkdocs_likec4.plugin:LikeC4Plugin"
 

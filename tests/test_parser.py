@@ -13,6 +13,7 @@ class TestViewOptions:
         assert opts.browser == "true"
         assert opts.dynamic_variant == "diagram"
         assert opts.project is None
+        assert opts.color_scheme == "auto"
 
     def test_custom_values(self):
         """Test ViewOptions with custom values."""
@@ -21,11 +22,13 @@ class TestViewOptions:
             browser="false",
             dynamic_variant="sequence",
             project="myproject",
+            color_scheme="dark",
         )
         assert opts.view_id == "my-view"
         assert opts.browser == "false"
         assert opts.dynamic_variant == "sequence"
         assert opts.project == "myproject"
+        assert opts.color_scheme == "dark"
 
 
 class TestLikeC4ParserPattern:
@@ -189,6 +192,42 @@ class TestParseOptions:
         opts = LikeC4Parser.parse_options("dynamic-variant=invalid", "view")
         assert opts.dynamic_variant == "diagram"  # default
 
+    def test_color_scheme_default_is_auto(self):
+        """color_scheme defaults to 'auto' when no option is given and no default override."""
+        opts = LikeC4Parser.parse_options("", "view")
+        assert opts.color_scheme == "auto"
+
+    def test_color_scheme_light(self):
+        opts = LikeC4Parser.parse_options("color-scheme=light", "view")
+        assert opts.color_scheme == "light"
+
+    def test_color_scheme_dark(self):
+        opts = LikeC4Parser.parse_options("color-scheme=dark", "view")
+        assert opts.color_scheme == "dark"
+
+    def test_color_scheme_auto_explicit(self):
+        opts = LikeC4Parser.parse_options("color-scheme=auto", "view")
+        assert opts.color_scheme == "auto"
+
+    def test_color_scheme_default_override(self):
+        """default_color_scheme is used when no fence value is provided."""
+        opts = LikeC4Parser.parse_options("", "view", default_color_scheme="dark")
+        assert opts.color_scheme == "dark"
+
+    def test_color_scheme_fence_overrides_default(self):
+        """A fence value overrides the configured default."""
+        opts = LikeC4Parser.parse_options(
+            "color-scheme=auto", "view", default_color_scheme="light"
+        )
+        assert opts.color_scheme == "auto"
+
+    def test_invalid_color_scheme_falls_back_to_default(self):
+        """Invalid color-scheme value leaves the configured default in place."""
+        opts = LikeC4Parser.parse_options(
+            "color-scheme=neon", "view", default_color_scheme="light"
+        )
+        assert opts.color_scheme == "light"
+
 
 class TestIsValidIdentifier:
     """Tests for the is_valid_identifier method."""
@@ -248,22 +287,31 @@ class TestToHtml:
     """Tests for the to_html method."""
 
     def test_basic_html_output(self):
-        """Test basic HTML output without project."""
+        """Test basic HTML output without project (auto color scheme by default)."""
         opts = ViewOptions(view_id="my-view")
         html = LikeC4Parser.to_html(opts)
-        assert html == '<likec4-view view-id="my-view"></likec4-view>'
+        assert (
+            html
+            == '<likec4-view view-id="my-view" data-likec4-auto-scheme></likec4-view>'
+        )
 
     def test_html_with_project(self):
         """Test HTML output with valid project."""
         opts = ViewOptions(view_id="my-view", project="myproject")
         html = LikeC4Parser.to_html(opts)
-        assert html == '<myproject-view view-id="my-view"></myproject-view>'
+        assert (
+            html
+            == '<myproject-view view-id="my-view" data-likec4-auto-scheme></myproject-view>'
+        )
 
     def test_html_with_uppercase_project(self):
         """Test HTML output with uppercase project (should be lowercased)."""
         opts = ViewOptions(view_id="my-view", project="MyProject")
         html = LikeC4Parser.to_html(opts)
-        assert html == '<myproject-view view-id="my-view"></myproject-view>'
+        assert (
+            html
+            == '<myproject-view view-id="my-view" data-likec4-auto-scheme></myproject-view>'
+        )
 
     def test_html_with_custom_options(self):
         """Test HTML output with custom options."""
@@ -272,32 +320,59 @@ class TestToHtml:
             browser="false",
             dynamic_variant="sequence",
             project="proj",
+            color_scheme="dark",
         )
         html = LikeC4Parser.to_html(opts)
         assert (
             html
-            == '<proj-view view-id="test" browser="false" dynamic-variant="sequence"></proj-view>'
+            == '<proj-view view-id="test" browser="false" dynamic-variant="sequence" color-scheme="dark"></proj-view>'
         )
 
     def test_html_omits_only_default_browser(self):
-        """Only dynamic-variant is emitted when browser is at default."""
+        """Only dynamic-variant and the auto marker are emitted when browser is at default."""
         opts = ViewOptions(view_id="v", dynamic_variant="sequence")
         html = LikeC4Parser.to_html(opts)
         assert (
-            html == '<likec4-view view-id="v" dynamic-variant="sequence"></likec4-view>'
+            html
+            == '<likec4-view view-id="v" dynamic-variant="sequence" data-likec4-auto-scheme></likec4-view>'
         )
 
     def test_html_omits_only_default_dynamic_variant(self):
-        """Only browser is emitted when dynamic-variant is at default."""
+        """Only browser and the auto marker are emitted when dynamic-variant is at default."""
         opts = ViewOptions(view_id="v", browser="false")
         html = LikeC4Parser.to_html(opts)
-        assert html == '<likec4-view view-id="v" browser="false"></likec4-view>'
+        assert (
+            html
+            == '<likec4-view view-id="v" browser="false" data-likec4-auto-scheme></likec4-view>'
+        )
 
     def test_html_with_invalid_project_falls_back(self):
         """Test HTML output with invalid project name falls back to likec4-view."""
         opts = ViewOptions(view_id="my-view", project="123invalid")
         html = LikeC4Parser.to_html(opts)
-        assert html == '<likec4-view view-id="my-view"></likec4-view>'
+        assert (
+            html
+            == '<likec4-view view-id="my-view" data-likec4-auto-scheme></likec4-view>'
+        )
+
+    def test_html_color_scheme_light(self):
+        """color-scheme=light emits the attribute and no auto marker."""
+        opts = ViewOptions(view_id="v", color_scheme="light")
+        html = LikeC4Parser.to_html(opts)
+        assert html == '<likec4-view view-id="v" color-scheme="light"></likec4-view>'
+
+    def test_html_color_scheme_dark(self):
+        """color-scheme=dark emits the attribute and no auto marker."""
+        opts = ViewOptions(view_id="v", color_scheme="dark")
+        html = LikeC4Parser.to_html(opts)
+        assert html == '<likec4-view view-id="v" color-scheme="dark"></likec4-view>'
+
+    def test_html_color_scheme_auto_emits_marker(self):
+        """color-scheme=auto emits the data-likec4-auto-scheme marker for the runtime sync."""
+        opts = ViewOptions(view_id="v", color_scheme="auto")
+        html = LikeC4Parser.to_html(opts)
+        assert "data-likec4-auto-scheme" in html
+        assert "color-scheme=" not in html
 
     def test_html_escapes_invalid_view_id_with_quotes(self):
         """Test that invalid view ID with quotes is escaped to prevent XSS."""
