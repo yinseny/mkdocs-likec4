@@ -5,10 +5,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     npm python3 python3-pip graphviz \
     && rm -rf /var/lib/apt/lists/*
 
-# Install LikeC4 CLI
-RUN npm install -g likec4
+# Install LikeC4 CLI (>=1.57.0 for color-scheme attribute support)
+RUN npm install -g likec4@^1.57.0
 
-RUN pip3 install --break-system-packages mkdocs mkdocs-material mkdocs-doubleslash-theme
+COPY requirements-docs.txt /tmp/requirements-docs.txt
+RUN pip3 install --break-system-packages -r /tmp/requirements-docs.txt && rm /tmp/requirements-docs.txt
 
 # Copy plugin source and install
 COPY . /tmp/mkdocs-likec4/
